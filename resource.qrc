@@ -1,0 +1,11 @@
+<RCC>
+  <qresource prefix="icons">
+    <file>icons/edittable_not_selected.png</file>
+    <file>icons/icon.ico</file>
+    <file>icons/edittable_selected.png</file>
+    <file>icons/export_not_selected.png</file>
+    <file>icons/export_selected.png</file>
+    <file>icons/import_not_selected.png</file>
+    <file>icons/import_selected.png</file>
+  </qresource>
+</RCC>
