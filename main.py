@@ -36,6 +36,17 @@ class UI(QtWidgets.QMainWindow):
         self.btn_import_2.clicked.connect(self.importfunc2)
         self.btn_import_3 = self.findChild(QtWidgets.QPushButton,'import_btn_3')
         self.btn_import_3.clicked.connect(self.importfunc3)
+
+        self.spinBox_in_b = self.findChild(QtWidgets.QSpinBox,'spinBox_in_b')
+        self.spinBox_in_b.valueChanged.connect(self.lvValChanged)
+        self.doubleSpinBox_in_g = self.findChild(QtWidgets.QDoubleSpinBox,'doubleSpinBox_in_g')
+        self.doubleSpinBox_in_g.valueChanged.connect(self.lvValChanged)
+        self.spinBox_in_w = self.findChild(QtWidgets.QSpinBox,'spinBox_in_w')
+        self.spinBox_in_w.valueChanged.connect(self.lvValChanged)
+        self.spinBox_out_b = self.findChild(QtWidgets.QSpinBox,'spinBox_out_b')
+        self.spinBox_out_b.valueChanged.connect(self.lvValChanged)
+        self.spinBox_out_w = self.findChild(QtWidgets.QSpinBox,'spinBox_out_w')
+        self.spinBox_out_w.valueChanged.connect(self.lvValChanged)
         
         self.lut_checkBox = self.findChild(QtWidgets.QCheckBox,'lut_checkBox')
         self.lut_checkBox.setChecked(True)
@@ -122,6 +133,53 @@ class UI(QtWidgets.QMainWindow):
     def importfunc3(self):
         print('importfunc3')
 
+    # ----------- functions for import leveladjustment ----------- #
+    def lvValChanged(self):
+        # block signal before graphic view is updated
+        self.spinBox_in_b.blockSignals(True)
+        self.doubleSpinBox_in_g.blockSignals(True)
+        self.spinBox_in_w.blockSignals(True)
+        self.spinBox_out_b.blockSignals(True)
+        self.spinBox_out_w.blockSignals(True)
+        # fetch spin box values
+        input_b = self.spinBox_in_b.value()
+        input_g = self.doubleSpinBox_in_g.value()
+        input_w = self.spinBox_in_w.value()
+        output_b = self.spinBox_out_b.value()
+        output_w = self.spinBox_out_w.value()
+        # calculate lut array from level adjustment
+        #   Photoshop’s Levels adjustment remaps image tones using this math:
+        arr = []
+        for value in range(256):
+            #   1. Normalize: (pixel - inBlack) / (inWhite - inBlack) — stretches or compresses shadows and highlights.
+            value = (value - input_b) / (input_w - input_b)
+            value = max(0, min(value, 255))
+            #   2. Gamma: pixel = pixel ** (1/gamma) — adjusts midtones (brightness curve).
+            value = value ** (1/input_g)
+            #   3. Output: pixel = pixel * (outWhite - outBlack) + outBlack — sets new black and white points.
+            value = value * (output_w - output_b) + output_b
+            value = max(0, min(value, 255))
+            arr.append(int(value))
+        # update / push level adjustment lut to self.lut_array
+        self.update_self_lut_array(arr)
+        # display the lut-ed image in graphic view
+        if(len(self.imgpaths_display)>0):
+            self.setimgPathtoScene(self.imgpaths_display[self.imgi])
+        # unblock signal
+        self.spinBox_in_b.blockSignals(False)
+        self.doubleSpinBox_in_g.blockSignals(False)
+        self.spinBox_in_w.blockSignals(False)
+        self.spinBox_out_b.blockSignals(False)
+        self.spinBox_out_w.blockSignals(False)   
+
+
+
+        # cwd = os.getcwd()  #
+        # imgdir = os.path.dirname(imgpath) #
+        # os.chdir(imgdir) # handle cv2 cannot read special character folder name
+        # self.mat = cv2.imread(os.path.basename(imgpath),0)
+        # os.chdir(cwd) #
+        # self.mat = cv2.LUT(self.mat,np.array(self.lut_array,dtype=np.uint8))
 
     # ----------- functions for lut checkBox ----------- # 
     def lut_checkBox_stateChanged(self):
@@ -295,8 +353,26 @@ class UI(QtWidgets.QMainWindow):
         
     # ----------- functions for export button 2 ----------- # 
     def exportfunc2(self):
-        print('exportfunc2')
+        for img_path in self.imgpaths_scans:
+            img_filename = os.path.basename(img_path)
+            imgdir = os.path.dirname(img_path) #
+            imgdir_oneup = os.path.dirname(imgdir) #
+            imgdir_onedown = imgdir + '/lut'
+            if not os.path.exists(imgdir_onedown):
+                os.makedirs(imgdir_onedown)
+            
+            
+            cwd = os.getcwd()  #
+            
+            os.chdir(imgdir) # handle cv2 cannot read special character folder name
+            mat = cv2.imread(img_filename,0)
+            mat_lut = cv2.LUT(mat,np.array(self.lut_array,dtype=np.uint8))
 
+            os.chdir(imgdir_onedown) # handle cv2 cannot read special character folder name
+            cv2.imwrite(img_filename, mat_lut, [cv2.IMWRITE_JPEG_QUALITY , 95])
+
+            os.chdir(cwd) #
+            
     # ----------- functions for export button 3 ----------- # 
     def exportfunc3(self):    
         open('C:/Users/ASUS/Documents/new.gma', 'w').close() #erase content in origional .gma
