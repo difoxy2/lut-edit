@@ -43,6 +43,10 @@ class UI(QtWidgets.QMainWindow):
         self.doubleSpinBox_in_g.valueChanged.connect(self.lvValChanged)
         self.spinBox_in_w = self.findChild(QtWidgets.QSpinBox,'spinBox_in_w')
         self.spinBox_in_w.valueChanged.connect(self.lvValChanged)
+        self.spinBox_rep_g = self.findChild(QtWidgets.QSpinBox,'spinBox_rep_g')
+        self.spinBox_rep_g.valueChanged.connect(self.lvValChanged)
+        self.spinBox_rep_w = self.findChild(QtWidgets.QSpinBox,'spinBox_rep_w')
+        self.spinBox_rep_w.valueChanged.connect(self.lvValChanged)
         self.spinBox_out_b = self.findChild(QtWidgets.QSpinBox,'spinBox_out_b')
         self.spinBox_out_b.valueChanged.connect(self.lvValChanged)
         self.spinBox_out_w = self.findChild(QtWidgets.QSpinBox,'spinBox_out_w')
@@ -139,26 +143,34 @@ class UI(QtWidgets.QMainWindow):
         self.spinBox_in_b.blockSignals(True)
         self.doubleSpinBox_in_g.blockSignals(True)
         self.spinBox_in_w.blockSignals(True)
+        self.spinBox_rep_g.blockSignals(True)
+        self.spinBox_rep_w.blockSignals(True)
         self.spinBox_out_b.blockSignals(True)
         self.spinBox_out_w.blockSignals(True)
+
         # fetch spin box values
         input_b = self.spinBox_in_b.value()
         input_g = self.doubleSpinBox_in_g.value()
         input_w = self.spinBox_in_w.value()
         output_b = self.spinBox_out_b.value()
         output_w = self.spinBox_out_w.value()
+        rep_g = self.spinBox_rep_g.value()
+        rep_w = self.spinBox_rep_w.value()
         # calculate lut array from level adjustment
         #   Photoshop’s Levels adjustment remaps image tones using this math:
         arr = []
         for value in range(256):
-            #   1. Normalize: (pixel - inBlack) / (inWhite - inBlack) — stretches or compresses shadows and highlights.
-            value = (value - input_b) / (input_w - input_b)
-            value = max(0, min(value, 255))
-            #   2. Gamma: pixel = pixel ** (1/gamma) — adjusts midtones (brightness curve).
-            value = value ** (1/input_g)
-            #   3. Output: pixel = pixel * (outWhite - outBlack) + outBlack — sets new black and white points.
-            value = value * (output_w - output_b) + output_b
-            value = max(0, min(value, 255))
+            if value > rep_w:
+                value = int(round(max(0, min(255 * ((value/255) ** (1/rep_g)), 255))))
+            else:
+                #   1. Normalize: (pixel - inBlack) / (inWhite - inBlack) — stretches or compresses shadows and highlights.
+                value = (value - input_b) / (input_w - input_b)
+                value = max(0, min(value, 255))
+                #   2. Gamma: pixel = pixel ** (1/gamma) — adjusts midtones (brightness curve).
+                value = value ** (1/input_g)
+                #   3. Output: pixel = pixel * (outWhite - outBlack) + outBlack — sets new black and white points.
+                value = value * (output_w - output_b) + output_b
+                value = max(output_b, min(value, output_w))
             arr.append(int(value))
         # update / push level adjustment lut to self.lut_array
         self.update_self_lut_array(arr)
@@ -169,6 +181,8 @@ class UI(QtWidgets.QMainWindow):
         self.spinBox_in_b.blockSignals(False)
         self.doubleSpinBox_in_g.blockSignals(False)
         self.spinBox_in_w.blockSignals(False)
+        self.spinBox_rep_g.blockSignals(False)
+        self.spinBox_rep_w.blockSignals(False)
         self.spinBox_out_b.blockSignals(False)
         self.spinBox_out_w.blockSignals(False)   
 
