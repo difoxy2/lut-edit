@@ -8,6 +8,7 @@ import icons.resource_rc as resource_rc
 from labelzoom import LabelZoom
 from importui import ImportUI
 from gma_val import return_gma_array, gammadict
+from PIL import Image, ImageDraw, ImageFont
 
 class UI(QtWidgets.QMainWindow):
     def __init__(self, *args, **kwargs):
@@ -338,10 +339,35 @@ class UI(QtWidgets.QMainWindow):
             if self.lut_checkBox.isChecked():
                 img_mat = cv2.LUT(img_mat, np.array(self.lut_array,dtype=np.uint8))
             cv2.imwrite(temp_folder + '/' + os.path.basename(img_path), img_mat, [cv2.IMWRITE_JPEG_QUALITY , 70]) #for checking quality 80 - 100 too big file size
-        # add how_to_lut.txt
-        self.print_lut_table_as_txt(temp_folder)
 
-        # zip the .jpg(s)
+        # create how.txt
+        howlist = []
+            # how to Level
+        howlist.append('LEVEL: \n')
+        howlist.append(f'Input: b{str(self.spinBox_in_b.value())} g{str(self.doubleSpinBox_in_g.value())} w{str(self.spinBox_in_w.value())}\n')
+        howlist.append(f'γ{str(self.spinBox_rep_g.value())} for > {str(self.spinBox_rep_w.value())}\n')
+        howlist.append(f'Output: b{str(self.spinBox_out_b.value())} w{str(self.spinBox_out_w.value())}\n')
+            # how to LUT
+        howlist.append('\n')
+        howlist.append('LUT:\n')
+        howlist.append('Index    GMA\n')
+        for i in range(256):
+            if self.lutEditorTableWidget.item(i,1).text() != '':
+                howlist.append(f'{str(i)}    {self.lutEditorTableWidget.item(i,1).text()}\n')
+            # create image from howlist
+        font = ImageFont.load_default()
+        line_height = font.getbbox('A')[3] + 4 #add padding between lines
+        img_w = font.getbbox(max(howlist, key=len))[2] + 20 #longest item in howlist + some margin
+        img_h = line_height * len(howlist) + 20 # some margin
+        howimg = Image.new('RGB',(img_w,img_h),(255,255,255))
+        howdraw = ImageDraw.Draw(howimg)
+        y = 10
+        for line in howlist:
+            howdraw.text((10,y),line,font=font,fill=(0,0,0))
+            y += line_height
+        howimg.save(temp_folder + '/Z.jpg')
+
+        # zip the .jpg(s) and how.txt
         os.chdir(temp_folder)
         zfname = datetime.datetime.now().strftime("%Y-%m-%d-%H-%M-%S") + '.zip'
         cmd_log1 = subprocess.check_output(['7z', 'a', '-tzip', '-mx0', zfname, '*.*'], text=True) # add argv -pyes for password 'yes'
